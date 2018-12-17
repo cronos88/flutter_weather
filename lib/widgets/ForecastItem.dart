@@ -18,7 +18,7 @@ class WeatherItem extends StatelessWidget {
           children: <Widget>[
             Text(weather.name, style: TextStyle(color: Colors.red)),
             Text(weather.condition, style: TextStyle(color: Colors.black, fontSize: 32.0)),
-            Text('${weather.temp_c.ceil()+5}°', style: TextStyle(color: Colors.black)),
+            Text('${weather.temp_c.ceil()}°', style: TextStyle(color: Colors.black)),
             Image.network(weather.icon),
             Text(DateFormat.yMMMd().format(weather.date), style: TextStyle(color: Colors.black)),
             Text(DateFormat.Hm().format(weather.date), style: TextStyle(color: Colors.black))
