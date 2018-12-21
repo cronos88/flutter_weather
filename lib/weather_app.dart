@@ -31,46 +31,61 @@ class _MyWeatherAppState extends State<MyWeatherApp> {
   Widget build(BuildContext context) {
     return Scaffold(
       //TODO: Arreglar el home
-      body: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Expanded(
-            child: Column(
-              //mainAxisAlignment: MainAxisAlignment.center,
+      body: _buildBody(),
+    );
+  }
+
+  Widget _buildBody() {
+    if (isLoading) {
+      return Center(
+        child: weatherData != null
+            ? CircularProgressIndicator()
+            : Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+
               children: <Widget>[
-                Padding(
-                  padding: EdgeInsets.all(0.0),
-                  child: weatherData != null
-                      ? Weather(weather: weatherData)
-                      : Container(
-                          child: Text('nooo'),
-                        ),
-                ),
+                Text('No Network'),
+                RaisedButton(
+                  child: Text('Sin red'),
+                  onPressed: loadWeather,
+                )
               ],
             ),
-          ),
-
-          //Aqui va el Forecast
-          Container(
-            child: Padding(
-              padding: EdgeInsets.all(8.0),
-              child: Container(
-                height: 200.0,
-                child: forecastData != null
-                    ? ListView.builder(
-                        itemCount: forecastData.list.length,
-                        scrollDirection: Axis.horizontal,
-                        itemBuilder: (context, index) => WeatherItem(
-                            weather: forecastData.list.elementAt(index)))
-                    : Container(
-                        child: Text('No hay datos'),
-                      ),
-              ),
+      );
+    } else {
+      return Container(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Expanded(
+              child: Column(
+                children: <Widget>[
+                  Padding(
+                    padding: EdgeInsets.all(0.0),
+                    child: Weather(weather: weatherData)
+                  ),
+                ],
+              )
             ),
-          )
-        ],
-      ),
-    );
+
+            //Aqui va el Forecast
+            Container(
+              child: Padding(
+                padding: EdgeInsets.all(8.0),
+                child: Container(
+                  height: 200.0,
+                  child: ListView.builder(
+                      itemCount: forecastData.list.length,
+                      scrollDirection: Axis.horizontal,
+                      itemBuilder: (context, index) => WeatherItem(
+                          weather: forecastData.list.elementAt(index)))
+                ),
+              ),
+            )
+          ],
+        ),
+      );
+    }
   }
 
   loadWeather() async {
