@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_weather/models/ForecastData.dart';
 import 'package:flutter_weather/widgets/ForecastItem.dart';
+import 'package:connectivity/connectivity.dart';
 
 import 'package:flutter_weather/widgets/Weather.dart';
 import 'package:location/location.dart';
@@ -15,38 +16,61 @@ class MyWeatherApp extends StatefulWidget {
   _MyWeatherAppState createState() => _MyWeatherAppState();
 }
 
-class _MyWeatherAppState extends State<MyWeatherApp> {
+class _MyWeatherAppState extends State<MyWeatherApp> with WidgetsBindingObserver {
   Location _location = Location(); //Location
   String error; //location
   WeatherData weatherData;
   ForecastData forecastData;
   bool isLoading = false;
+  bool _connectivityMobile = false;
+  bool _connectivityWifi = false;
 
   @override
   void initState() {
     super.initState();
+    print('Arranca initState');
+    checkConnectivity();
     loadWeather();
+    print(weatherData.toString());
+  }
+
+  // Ciclo de vida de la app
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch(state) {
+      case AppLifecycleState.paused:
+        break;
+      case AppLifecycleState.resumed:
+        loadWeather();
+        break;
+      case AppLifecycleState.inactive:
+        break;
+      case AppLifecycleState.suspending:
+        break;
+    }
   }
 
   Widget build(BuildContext context) {
     return Scaffold(
-      //TODO: Arreglar el home
       body: _buildBody(),
     );
   }
 
   Widget _buildBody() {
+    print('buildBody');
+    print('empieza verificar');
+    print(_connectivityMobile || _connectivityWifi);
+    print('termina verificar');
     if (isLoading) {
       return Center(
-        child: weatherData != null
+        child: _connectivityMobile || _connectivityWifi
             ? CircularProgressIndicator()
             : Column(
               mainAxisAlignment: MainAxisAlignment.center,
-
               children: <Widget>[
                 Text('No Network'),
                 RaisedButton(
-                  child: Text('Sin red'),
+                  child: Text('Intente de nuevo'),
                   onPressed: loadWeather,
                 )
               ],
@@ -69,23 +93,40 @@ class _MyWeatherAppState extends State<MyWeatherApp> {
             ),
 
             //Aqui va el Forecast
-            Container(
-              child: Padding(
-                padding: EdgeInsets.all(8.0),
-                child: Container(
-                  height: 200.0,
-                  child: ListView.builder(
-                      itemCount: forecastData.list.length,
-                      scrollDirection: Axis.horizontal,
-                      itemBuilder: (context, index) => WeatherItem(
-                          weather: forecastData.list.elementAt(index)))
-                ),
-              ),
-            )
+
+//            Container(
+//              child: Padding(
+//                padding: EdgeInsets.all(8.0),
+//                child: Container(
+//                  height: 200.0,
+//                  child: ListView.builder(
+//                      itemCount: forecastData.list.length,
+//                      scrollDirection: Axis.horizontal,
+//                      itemBuilder: (context, index) => WeatherItem(
+//                          weather: forecastData.list.elementAt(index)))
+//                ),
+//              ),
+//            )
           ],
         ),
       );
     }
+  }
+
+  checkConnectivity() async {
+    var connectivityResult = await (new Connectivity().checkConnectivity());
+    if (connectivityResult == ConnectivityResult.mobile) {
+      setState(() {
+        _connectivityMobile = true;
+        print(connectivityResult);
+      });
+    } else if (connectivityResult == ConnectivityResult.wifi) {
+      setState(() {
+        _connectivityWifi = true;
+        print(connectivityResult);
+      });
+    }
+
   }
 
   loadWeather() async {
