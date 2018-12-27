@@ -22,22 +22,23 @@ class _MyWeatherAppState extends State<MyWeatherApp> with WidgetsBindingObserver
   WeatherData weatherData;
   ForecastData forecastData;
   bool isLoading = false;
-  bool _connectivityMobile = false;
-  bool _connectivityWifi = false;
+  Future<WeatherData> weatherInfo;
+  Future<ForecastData> forecastInfo;
+
+
+  _MyWeatherAppState({this.error, this.weatherData,
+      this.forecastData, this.isLoading, this.weatherInfo, this.forecastInfo});
 
   @override
   void initState() {
     super.initState();
-    print('Arranca initState');
-    checkConnectivity();
     loadWeather();
-    print(weatherData.toString());
   }
 
   // Ciclo de vida de la app
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    switch(state) {
+    switch (state) {
       case AppLifecycleState.paused:
         break;
       case AppLifecycleState.resumed:
@@ -57,79 +58,99 @@ class _MyWeatherAppState extends State<MyWeatherApp> with WidgetsBindingObserver
   }
 
   Widget _buildBody() {
-    print('buildBody');
-    print('empieza verificar');
-    print(_connectivityMobile || _connectivityWifi);
-    print('termina verificar');
     if (isLoading) {
       return Center(
-        child: _connectivityMobile || _connectivityWifi
-            ? CircularProgressIndicator()
-            : Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Text('No Network'),
-                RaisedButton(
-                  child: Text('Intente de nuevo'),
-                  onPressed: loadWeather,
-                )
-              ],
-            ),
-      );
-    } else {
-      return Container(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Expanded(
-              child: Column(
-                children: <Widget>[
-                  Padding(
-                    padding: EdgeInsets.all(0.0),
-                    child: Weather(weather: weatherData)
-                  ),
-                ],
-              )
-            ),
-
-            //Aqui va el Forecast
-
-//            Container(
-//              child: Padding(
-//                padding: EdgeInsets.all(8.0),
-//                child: Container(
-//                  height: 200.0,
-//                  child: ListView.builder(
-//                      itemCount: forecastData.list.length,
-//                      scrollDirection: Axis.horizontal,
-//                      itemBuilder: (context, index) => WeatherItem(
-//                          weather: forecastData.list.elementAt(index)))
-//                ),
-//              ),
-//            )
-          ],
-        ),
+        child: FutureBuilder<WeatherData>(
+          future: weatherInfo,
+          builder: (context, snapshot) {
+            if (snapshot.hasData) {
+              print('snapshot: $snapshot');
+              return Container(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Expanded(
+                        child: Column(
+                          children: <Widget>[
+                            Padding(
+                                padding: EdgeInsets.all(0.0),
+                                child: Weather(weather: weatherData)
+                            ),
+                          ],
+                        )
+                    ),
+                  ],
+                ),
+              );
+            } else if (snapshot.hasError){
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    Text('No Network'),
+                    RaisedButton(
+                      child: Text('Intente de nuevo'),
+                      onPressed: loadWeather,
+                    )
+                  ],
+                ),
+              );
+            }
+            return CircularProgressIndicator();
+          },
+        )
       );
     }
   }
 
-  checkConnectivity() async {
-    var connectivityResult = await (new Connectivity().checkConnectivity());
-    if (connectivityResult == ConnectivityResult.mobile) {
-      setState(() {
-        _connectivityMobile = true;
-        print(connectivityResult);
-      });
-    } else if (connectivityResult == ConnectivityResult.wifi) {
-      setState(() {
-        _connectivityWifi = true;
-        print(connectivityResult);
-      });
+  Future<WeatherData> loadWeatherData(var location) async {
+    print('Función loadWeatherData');
+    print('location: $location');
+    if (location != null) {
+      final lat = location['latitude'];
+      final lon = location['longitude'];
+
+      final response = await http.get(
+          'http://api.apixu.com/v1/current.json?key=c835bd34c7e44586ac843135181612&q=${lat
+              .toString()},${lon.toString()}&lang=es');
+
+      if (response.statusCode == 200) {
+        return WeatherData.fromJson(json.decode(response.body));
+      } else {
+        throw Exception('Failed to load weather data');
+      }
+
     }
 
+    setState(() {
+      isLoading = false;
+    });
+  }
+
+  Future<ForecastData> loadForecastData(var location) async {
+    print('Función loadForecastData');
+    if (location != null) {
+      final lat = location['latitude'];
+      final lon = location['longitude'];
+
+      final forecastResponse = await http.get(
+          'https://api.openweathermap.org/data/2.5/forecast?units=metric&appid=aa0bc262dc7cb866eda2d2ebb175b494&lat=${lat
+              .toString()}&lon=${lon.toString()}');
+
+      if (forecastResponse.statusCode == 200) {
+        return ForecastData.fromJson(json.decode(forecastResponse.body));
+      } else {
+        throw Exception('Failed to load Forecast Data');
+      }
+    }
+
+    setState(() {
+      isLoading = false;
+    });
   }
 
   loadWeather() async {
+
     setState(() {
       isLoading = true;
     });
@@ -144,45 +165,13 @@ class _MyWeatherAppState extends State<MyWeatherApp> with WidgetsBindingObserver
         error = 'Permission denied';
       } else if (e.code == 'PERMISSION_DENIED_NEVER_ASK') {
         error =
-            'Permission denied - please ask  the user to enable it from the app settings';
+        'Permission denied - please ask  the user to enable it from the app settings';
       }
 
       location = null;
     }
-
-    if (location != null) {
-      final lat = location['latitude'];
-      final lon = location['longitude'];
-
-      debugPrint(lat.toString());
-      debugPrint(lon.toString());
-      final weatherResponse = await http.get(
-          'http://api.apixu.com/v1/current.json?key=c835bd34c7e44586ac843135181612&q=${lat.toString()},${lon.toString()}&lang=es');
-      final forecastResponse = await http.get(
-          'https://api.openweathermap.org/data/2.5/forecast?units=metric&appid=aa0bc262dc7cb866eda2d2ebb175b494&lat=${lat.toString()}&lon=${lon.toString()}');
-
-      print(weatherResponse.statusCode);
-      print(forecastResponse.statusCode);
-
-      if (weatherResponse.statusCode == 200 &&
-          forecastResponse.statusCode == 200) {
-        return setState(() {
-          weatherData = WeatherData.fromJson(jsonDecode(weatherResponse.body));
-          forecastData =
-              ForecastData.fromJson(jsonDecode(forecastResponse.body));
-          isLoading = false;
-        });
-      } else {
-        print('Error');
-      }
-      print(weatherData);
-      print(forecastData);
-    } else {
-      print('No hay datos');
-    }
-
-    setState(() {
-      isLoading = false;
-    });
+    print("Mi Location: $location");
+    loadWeatherData(location);
+    loadForecastData(location);
   }
 }
